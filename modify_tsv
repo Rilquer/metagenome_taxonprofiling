@@ -1,0 +1,137 @@
+#!/usr/bin/Rscript
+#Change the line above for the location of Rscript executable file
+##Version: Nov 26 2018 - 15:23
+
+##Getting arguments
+#Checking if optparse is installed. If not, install it.
+if (("optparse" %in% installed.packages()) == FALSE) {
+	install.packages('optparse',dependencies=TRUE,repos='http://cran.us.r-project.org')
+}
+library('optparse')
+
+#Setting arguments
+option_list = list(
+	make_option("--About the script",type="character",default=NULL,
+		help="This script is designed to modify the tsv output file from kraken-biom into a standard abundance matrix for further analysis.", metavar="character"),
+	make_option(c("-f", "--file"), type="character", default=NULL,
+		help="Input tsv file", metavar="character"),
+	make_option(c("-r", "--rank"), type="character", default="NULL",
+		help="A string informing the rank to be used in generating the abundance matrix.", metavar="character"),
+	make_option(c("-n","--name"), type="character", default="NULL",
+		help="Name of analysis", metavar="character"),
+	make_option(c("-o", "--output"), type="character", default="random",
+		help="Rank file must be one of following: P, C, O, F, G, S.", metavar="character")
+  )
+
+opt_parser = OptionParser(option_list=option_list);
+opt = parse_args(opt_parser)
+
+#Checking which arguments are null
+if (is.null(opt)){
+  print_help(opt_parser)
+  stop("You must provide the following mandaroty arguments: --file, --rank, --name and --output", call.=FALSE)
+}
+if (is.null(opt$name)) {
+  print_help(opt_parser)
+  stop("You must provide the name for the analysis.", call.=FALSE)
+}
+if (is.null(opt$file)) {
+  print_help(opt_parser)
+  stop("You must provide an input file.", call.=FALSE)
+}
+if (is.null(opt$rank)) {
+  print_help(opt_parser)
+  stop("You must provide at least one rank.", call.=FALSE)
+}
+if (is.null(opt$output)) {
+  print_help(opt_parser)
+  stop("You must provide an output directory least one rank.", call.=FALSE)
+}
+
+##Transforming tsv into co-occurence input
+#Reading and modifying table
+tsv=read.table(opt$file,sep='\t',fill=TRUE,header=T)
+taxonomy.temp=as.character(tsv[,NCOL(tsv)]) #Retrieving taxonomy information from last column
+tsv=tsv[,-NCOL(tsv)] #Removing last column
+tsv=tsv[,2:NCOL(tsv)] #Removing first column
+
+#Creating taxonomy data.frame
+#This block creates a taxonomy data.frame, where each row is the taxonomy information
+#for each sample, from kingdom to species, by using the separator ; in the function
+#strsplit. The function trimws and substr are for formatting the info (removing empty
+#spaces and removing initial characters with underline). With this formatting,
+#taxonomic ranks not identified are kept in the vector as an empty slot.
+taxonomy=c()
+for (i in 1:NROW(taxonomy.temp)) {
+  vec=trimws(strsplit(taxonomy.temp,";")[[i]])
+  vec=substr(vec,4,nchar(vec))
+  taxonomy=rbind(taxonomy,vec)
+}
+
+taxonomy=taxonomy[,2:NCOL(taxonomy)] #Retriving only from phyla to species
+
+#Iterate in each line
+abundance.matrix=c()
+for (i in 1:NROW(taxonomy)) {
+  #Check whether all ranks are empty
+  bk=0
+  for (j in 1:6) {
+    if (taxonomy[i,j]==''){
+      bk=bk+1
+    }
+  }
+
+  if (bk < 6) {
+  #Checking if chosen rank is defined
+    if ( opt$rank == 'P' ) {
+      rank=1
+    }
+    if ( opt$rank == 'C' ) {
+      rank=2
+      chosenstring='Unclassified class in '
+    }
+    if ( opt$rank == 'O' ) {
+      rank=3
+      chosenstring='Unclassified order in '
+    }
+    if ( opt$rank == 'F' ) {
+      rank=4
+      chosenstring='Unclassified family in '
+    }
+    if ( opt$rank == 'G' ) {
+      rank=5
+      chosenstring='Unclassified genus in '
+    }
+    if ( opt$rank == 'S' ) {
+      rank=6
+      chosenstring='Unclassified species in '
+    }
+    if (taxonomy[i,rank] != '') {
+      rankc=TRUE
+      f=rank
+    } else {
+      rankc=FALSE
+    }
+  #If chosen rank is not defined...
+    if ( rankc==FALSE ) {
+      found=FALSE
+      j=rank-1
+      while ((j >= 1) & (found==FALSE)) {
+        if (taxonomy[i,j]!='') {
+          found=TRUE
+          f=j
+        } else {
+          j=j-1
+        }
+      }
+      info=c(paste(chosenstring,taxonomy[i,f],sep=''),as.numeric(tsv[i,]))
+      abundance.matrix=rbind(abundance.matrix,info)
+    } else {
+      info=c(taxonomy[i,f],as.numeric(tsv[i,]))
+      abundance.matrix=rbind(abundance.matrix,info)
+    }
+  }
+}
+
+colnames(abundance.matrix)=c('taxonomy',colnames(tsv))
+write.table(abundance.matrix,paste(opt$output,opt$name,'_',opt$rank,'_abundance.matrix',sep=''),col.names=T,row.names=F,quote=F,sep='\t')

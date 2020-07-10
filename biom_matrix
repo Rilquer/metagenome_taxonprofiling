@@ -1,0 +1,113 @@
+#!/bin/bash
+##Last modified: Mar 22, 2019 - 13:00
+
+initdir=$PWD
+exec 2> /dev/null
+
+while getopts s:d:o:r:n:g: option
+do
+case "${option}"
+in
+s) SAMPLE=${OPTARG};;
+d) DIR=${OPTARG};;
+o) OUTDIR=${OPTARG};;
+r) initr=${OPTARG};;
+n) name=${OPTARG};;
+
+esac
+done
+
+exec 2> /dev/tty
+
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]  
+then
+
+echo "Abundance Matrix Script
+This script was designed to process report files outputted by kraken into abundance matrix for a
+specific metagenomic sample (with the option -s) or a set of metagenomic samples (with the option -f).
+In the latter case, all samples will be collapsed into a single abundance matrix. The script requires
+the report output file from kraken and the R script modify_tsv in the bin folder without the .R extension.
+Additionally, it requires kraken-biom (https://github.com/smdabdoub/kraken-biom) and BIOM (http://biom-
+format.org/) to be installed and executable as commands (follow tutorial in the links to install these
+programs).
+
+Usage:
+./biom_matrix.sh [OPTIONS]
+
+Another option is to remove the .sh extension and move the script to your bin folder, so it can be
+immediately called in the command line, without having to explicit the location of the script.
+
+OPTIONS
+
+-s	Path to the  sample to be analyzed (when analysing only one sample, not be used with -d)
+-d	Path to the directory containing all samples to be collapsed into a single matrix. (not to be
+	used with -s)
+-n	Expression used to name the analysis of a specific subset (when using the option -d). This will be the
+	name of the final output abundance matrix.
+-o	Path to the directory where to place final output files. Optional (default is current directory)
+-r	Taxonomic rank (between Phyla and Species) in which output the final abundance matrix. A vector
+	with one or more of the following: P (for Phyla), C (for Class), O (for Order), F (for Family),
+	G (for Genus) or S (for Species). When using more than one option, they MUST be separated by a
+	comma. Mandatory.
+--help	Shows this help information."
+
+
+else
+if [ -z "${SAMPLE}" ] && [ -z "${DIR}" ]
+then
+	echo 'You must provide path to sample (s). Run script with --help for more info.'
+	exit 1
+elif [ "${SAMPLE}" != "" ] && [ "${DIR}" != "" ]
+then
+	echo 'You must chose only one option between -s and -d, i.e., either create matrix for one sample (-s)
+or for a subset of samples (-d). Run script with --help for more info.'
+	exit 1
+elif [ -z "${SAMPLE}" ] && [ "${name}" == "" ]
+then
+	echo 'You must provide a name for the analysis of this subset'
+	exit 1
+fi
+
+if [ -z "${initr}" ]
+then
+	echo 'You must provide taxonomic rank for final abundance matrix. Run script with --help for more info.'
+	exit 1
+else
+	IFS=',' read -r -a RANK <<< "${initr}"
+fi
+
+if [ -z "${OUTDIR}" ]
+then
+	OUTDIR=./
+fi
+
+if [ -z "${SAMPLE}" ]
+then
+	reportlist=($( ls ${DIR}/*_kraken_report))
+	for j in ${RANK[@]}
+	do
+		echo "Generating abundance matrix for rank "${j}
+		kraken-biom ${reportlist[@]} -o ${OUTDIR}/${name}_${j}_table.biom --max D --min ${j}
+		biom convert -i ${OUTDIR}/${name}_${j}_table.biom -o ${OUTDIR}/${name}_${j}_table.biom.tsv --to-tsv --header-key taxonomy
+		sed -i "s/#OTU/OTU/g" ${OUTDIR}/${name}_${j}_table.biom.tsv
+		modify_tsv -f ${OUTDIR}/${name}_${j}_table.biom.tsv -r ${j} -n ${name} -o ${OUTDIR}
+		echo "Matrix done!"
+	done
+else
+	i=${SAMPLE}
+	#Retrieving ID
+	if [[ ${i} =~ /(.+)_kraken_report ]]
+	then
+		id=${BASH_REMATCH[1]}
+	fi
+	for j in ${RANK[@]}
+	do
+		echo "Generating abundance matrix for rank "${j}
+		kraken-biom ${SAMPLE} -o ${OUTDIR}/${id}_table.biom --max D --min ${j}
+		biom convert -i ${OUTDIR}/${id}_table.biom -o ${OUTDIR}/${id}_${j}_table.biom.tsv --to-tsv --header-key taxonomy
+		sed -i "s/#OTU/OTU/g" ${OUTDIR}/${id}_${j}_table.biom.tsv
+		modify_tsv -f ${OUTDIR}/${id}_${j}_table.biom.tsv -r ${j} -n ${name} -o ${OUTDIR}
+		echo "Matrix for rank "${j}" done!"
+	done
+fi
+fi
