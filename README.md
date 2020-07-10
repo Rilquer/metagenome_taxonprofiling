@@ -17,7 +17,7 @@ annotation not referred to Bacteria or Archaea.
 2. For each taxonomic rank defined by the user, uses the selgroups_out file (output from the previous script) into the program kraken-biom, which converts the file to a table in the biom format. Then, uses the biom command from the same program to convert the biom format into a readable tsv format table.
 3. The tsv format is read into the R script *modify_tsv*, to filter out the results for the specified rank. This script retrieves all reads annotated to a specific taxonomic rank, as well as all reads that were annotated to a higher rank but could not be annotated for the desire rank (e.g., when the desired rank is genus, a number of reads can be annotated only until the family level, and those will be outputted as Unclassified genus in family XXX).
 
-Usage: $ biom_matrix -d kraken_standart_report -n bts_standart_db_ -o output_kraken_standart_db -r P,C,O,F,G
+Usage: $ biom_matrix -d kraken_report_files -n standart_name -o output_directory -r taxonomic rank (P,C,O,F,G)
 
 Options:
 - *-s* Path to the  sample to be analyzed (when analysing only one sample, not be used with -d)
