@@ -20,11 +20,11 @@ annotation not referred to Bacteria or Archaea.
 Usage: $ biom_matrix -d kraken_standart_report -n bts_standart_db_ -o output_kraken_standart_db -r P,C,O,F,G
 
 Options:
-*-s* Path to the  sample to be analyzed (when analysing only one sample, not be used with -d)
-*-d* Path to the directory containing all samples to be collapsed into a single matrix. (not to be used with -s)
-*-n* Expression used to name the analysis of a specific subset (when using the option -d). This will be the name of the final output abundance matrix.
-*-o* Path to the directory where to place final output files. Optional (default is current directory)
-*-r* Taxonomic rank (between Phyla and Species) in which output the final abundance matrix. A vector with one or more of the following: P (for Phyla), C (for Class), O (for Order), F (for Family),	G (for Genus) or S (for Species). When using more than one option, they MUST be separated by a comma. Mandatory.
-*--help* Shows this help information.
+- *-s* Path to the  sample to be analyzed (when analysing only one sample, not be used with -d)
+- *-d* Path to the directory containing all samples to be collapsed into a single matrix. (not to be used with -s)
+- *-n* Expression used to name the analysis of a specific subset (when using the option -d). This will be the name of the final output abundance matrix.
+- *-o* Path to the directory where to place final output files. Optional (default is current directory)
+- *-r* Taxonomic rank (between Phyla and Species) in which output the final abundance matrix. A vector with one or more of the following: P (for Phyla), C (for Class), O (for Order), F (for Family),	G (for Genus) or S (for Species). When using more than one option, they MUST be separated by a comma. Mandatory.
+- *--help* Shows this help information.
 
 After this pipeline, we have obtained “.matrix” files that will be used in a R script to give our matrix the format required to other analysis.
